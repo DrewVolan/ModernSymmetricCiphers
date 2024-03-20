@@ -55,6 +55,7 @@
             // 
             // decodeButton
             // 
+            this.decodeButton.Enabled = false;
             this.decodeButton.Font = new System.Drawing.Font("Times New Roman", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
             this.decodeButton.Location = new System.Drawing.Point(1016, 544);
             this.decodeButton.Name = "decodeButton";
@@ -62,9 +63,11 @@
             this.decodeButton.TabIndex = 7;
             this.decodeButton.Text = "Расшифровать файл";
             this.decodeButton.UseVisualStyleBackColor = true;
+            this.decodeButton.Click += new System.EventHandler(this.decodeButton_Click);
             // 
             // encodeButton
             // 
+            this.encodeButton.Enabled = false;
             this.encodeButton.Font = new System.Drawing.Font("Times New Roman", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
             this.encodeButton.Location = new System.Drawing.Point(810, 544);
             this.encodeButton.Name = "encodeButton";
@@ -72,6 +75,7 @@
             this.encodeButton.TabIndex = 6;
             this.encodeButton.Text = "Зашифровать файл";
             this.encodeButton.UseVisualStyleBackColor = true;
+            this.encodeButton.Click += new System.EventHandler(this.encodeButton_Click);
             // 
             // secretKeyTextBox
             // 
@@ -80,6 +84,7 @@
             this.secretKeyTextBox.Name = "secretKeyTextBox";
             this.secretKeyTextBox.Size = new System.Drawing.Size(764, 40);
             this.secretKeyTextBox.TabIndex = 5;
+            this.secretKeyTextBox.TextChanged += new System.EventHandler(this.secretKeyTextBox_TextChanged);
             // 
             // secretKeyLabel
             // 
@@ -110,6 +115,7 @@
             this.pathButton.TabIndex = 3;
             this.pathButton.Text = "Загрузить файл";
             this.pathButton.UseVisualStyleBackColor = true;
+            this.pathButton.Click += new System.EventHandler(this.pathButton_Click);
             // 
             // pathTextBox
             // 
@@ -126,7 +132,9 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1258, 664);
             this.Controls.Add(this.encoderPanel);
+            this.MaximizeBox = false;
             this.Name = "MainForm";
+            this.ShowIcon = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Шифратор";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.MainForm_FormClosed);
