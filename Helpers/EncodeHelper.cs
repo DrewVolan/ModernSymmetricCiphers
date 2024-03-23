@@ -1,6 +1,7 @@
 ﻿using ModernSymmetricCiphers.Exceptions;
 using ModernSymmetricCiphers.Models;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -76,20 +77,110 @@ namespace ModernSymmetricCiphers.Helpers
             var nr = encoder.Nr; // Количество раундов в алгоритме.
 
             // Получаем ключи для всех раундов.
-            var keys = KeyExpansion(secretKeyBytes, nr + 1);
-            RoundKey();
+            var keys = KeyExpansion(secretKeyBytes, nr + 1, nk);
+
+            // Начинаем шифрование текста.
+            for(var i = 0; i < initialTextBlocks.Length; i++)
+            {
+                AddRoundKey(ref initialTextBlocks[i], keys[0]); // "Нулевой" раунд.
+                for (var j = 0; j < nr; j++)
+                {
+                    ByteSubstitution(ref initialTextBlocks[i]);
+                    AddRoundKey(ref initialTextBlocks[i], keys[j]);
+                }
+            }
         }
 
-        private static byte[] KeyExpansion(byte[] initialKey, int roundCount)
+        private static byte[][][] KeyExpansion(byte[] initialKey, int roundCount, int wordCount)
         {
-            var keys = new byte[roundCount + 1];
+            var keys = new List<byte[][]>();
 
-            for (var i = 0; i < roundCount; i++)
+            var words = new byte[roundCount * wordCount + wordCount][];
+
+            for (var i = 0; i < wordCount; i++)
             {
-                
+                words[i] = initialKey.Skip(wordCount * i).Take(wordCount).ToArray();
             }
 
-            return keys;
+            keys.Add(words.Take(wordCount).ToArray());
+            var counterForKey = 0;
+            for (var i = wordCount; i < roundCount * 4; i++)
+            {
+                if (i % wordCount == 0)
+                {
+                    words[i] = XorKeys(words[i - wordCount], G(words[i - 1], i / wordCount, wordCount));
+                }
+                else
+                {
+                    words[i] = XorKeys(words[i - wordCount], words[i - 1]);
+                }
+
+                counterForKey++;
+
+                if (counterForKey == wordCount - 1)
+                {
+                    keys.Add(words.Skip(i - wordCount).Take(wordCount).ToArray());
+                    counterForKey = 0;
+                }
+            }
+
+            return keys.ToArray();
+        }
+
+        private static byte[] XorKeys(byte[] word1, byte[] word2)
+        {
+            var byteCount = word1.Length;
+            var result = new byte[byteCount];
+
+            for (var i = 0; i < byteCount; i++)
+            {
+                result[i] = (byte)(word1[i] ^ word2[i]);
+            }
+
+            return result;
+        }
+
+        private static byte[] G(byte[] word, int roundCount, int wordCount)
+        {
+            ShiftRow(ref word, wordCount);
+            ByteSubstitution(ref word);
+            AddRoundConstant(ref word, roundCount);
+            return word;
+        }
+
+        private static void AddRoundConstant(ref byte[] word, int roundCount)
+        {
+            for (var i = 0; i < word.Length; i++)
+            {
+                word[i] = (byte)(word[i] ^ AesConstants.RoundConst[roundCount][i]);
+            }
+        }
+
+        private static void ByteSubstitution(ref byte[] word)
+        {
+            for(var i = 0; i < word.Length; i++)
+            {
+                var hexByte = Convert.ToString(word[i], 16);
+                var isBigByte = hexByte.Length == 2;
+                var row = isBigByte
+                    ? Convert.ToInt32(hexByte[0].ToString(), 16)
+                    : 0;
+                var column = isBigByte
+                    ? Convert.ToInt32(hexByte[1].ToString(), 16)
+                    : Convert.ToInt32(hexByte[0].ToString(), 16);
+
+                word[i] = AesConstants.Sbox[row][column];
+            }
+        }
+
+        private static void ShiftRow(ref byte[] word, int wordCount)
+        {
+            var temp = word[0];
+            for (var i = 0; i < wordCount - 1; i++)
+            {
+                word[i] = word[i + 1];
+            }
+            word[wordCount - 1] = temp;
         }
 
         /// <summary>
@@ -101,9 +192,22 @@ namespace ModernSymmetricCiphers.Helpers
 
         }
 
-        private static void RoundKey()
+        private static void AddRoundKey(ref byte[] block, byte[][] roundKey)
         {
-            throw new NotImplementedException();
+            var keyList = new List<byte>();
+            for (int i = 0; i < roundKey.Length; i++)
+            {
+                for (int j = 0; j < roundKey[i].Length; j++)
+                {
+                    keyList.Add(roundKey[i][j]);
+                }
+            }
+            var key = keyList.ToArray();
+
+            for (var i = 0; i < block.Length; i++)
+            {
+                block[i] = (byte)(block[i] ^ key[i]);
+            }
         }
     }
 }
