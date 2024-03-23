@@ -68,5 +68,15 @@ namespace ModernSymmetricCiphers.Models
                 blockType = value;
             }
         }
+
+        /// <summary>
+        /// Количество слов в ключе.
+        /// </summary>
+        public int Nk => (int)BlockType * 8 / 32;
+
+        /// <summary>
+        /// Количество раундов в алгоритме.
+        /// </summary>
+        public int Nr => Nk + 6;
     }
 }
