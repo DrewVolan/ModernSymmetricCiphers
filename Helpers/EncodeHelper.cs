@@ -24,26 +24,72 @@ namespace ModernSymmetricCiphers.Helpers
 
             var intBlockType = (int)encoder.BlockType;
 
+            // Заполняем блоки.
             var initialText = encoder.InitialText;
             var initialTextBytes = Encoding.UTF8.GetBytes(initialText);
-
-            var blocksCount = initialTextBytes.Length % (int)encoder.BlockType != 0
+            var initialTextBlocksCount = initialTextBytes.Length % intBlockType != 0
                 ? initialTextBytes.Length / intBlockType + 1
                 : initialTextBytes.Length / intBlockType;
-
-            var initialTextBlocks = new byte[blocksCount][];
-
+            var initialTextBlocks = new byte[initialTextBlocksCount][];
             for (var i = 0; i < initialTextBlocks.Length; i++)
             {
                 initialTextBlocks[i] = initialTextBytes.Skip(i * intBlockType).Take(intBlockType).ToArray();
             }
+            // Дополняем последний блок до нужного количества бит.
+            var oldLastInitialTextBlockLength = initialTextBlocks.Last().Length;
+            if (oldLastInitialTextBlockLength != intBlockType)
+            {
+                var newLastBlock = new byte[intBlockType];
+
+                for (var i = 0; i < intBlockType; i++)
+                {
+                    newLastBlock[i] = i < oldLastInitialTextBlockLength
+                        ? initialTextBlocks[initialTextBlocks.Length - 1][i]
+                        : Convert.ToByte(0x00);
+                }
+                initialTextBlocks[initialTextBlocks.Length - 1] = newLastBlock;
+            }
 
             var secretKey = encoder.SecretKey;
-            var secretKeyBytes = new byte[secretKey.Length];
-            for (var i = 0; i < secretKey.Length; i++)
+            var secretKeyBytes = Encoding.UTF8.GetBytes(secretKey);
+            if (secretKeyBytes.Length > intBlockType)
             {
-                secretKeyBytes[i] = Convert.ToByte(secretKey[i]);
+                throw new EncodeException($"Необходим ключ размером {intBlockType} байт или меньше.");
             }
+            // Дополняем блок до нужного количества бит.
+            var secretKeyBlockLength = secretKeyBytes.Length;
+            if (secretKeyBlockLength != intBlockType)
+            {
+                var newBlock = new byte[intBlockType];
+
+                for (var i = 0; i < intBlockType; i++)
+                {
+                    newBlock[i] = i < secretKeyBlockLength
+                        ? secretKeyBytes[i]
+                        : Convert.ToByte(0x00);
+                }
+                secretKeyBytes = newBlock;
+            }
+
+            // Определяем параметры.
+            var nk = encoder.Nk; // Количество слов в ключе.
+            var nr = encoder.Nr; // Количество раундов в алгоритме.
+
+            // Получаем ключи для всех раундов.
+            var keys = KeyExpansion(secretKeyBytes, nr + 1);
+            RoundKey();
+        }
+
+        private static byte[] KeyExpansion(byte[] initialKey, int roundCount)
+        {
+            var keys = new byte[roundCount + 1];
+
+            for (var i = 0; i < roundCount; i++)
+            {
+                
+            }
+
+            return keys;
         }
 
         /// <summary>
@@ -53,6 +99,11 @@ namespace ModernSymmetricCiphers.Helpers
         public static void Decode(this AesEncoder encoder)
         {
 
+        }
+
+        private static void RoundKey()
+        {
+            throw new NotImplementedException();
         }
     }
 }
