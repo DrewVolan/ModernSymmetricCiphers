@@ -86,9 +86,66 @@ namespace ModernSymmetricCiphers.Helpers
                 for (var j = 0; j < nr; j++)
                 {
                     ByteSubstitution(ref initialTextBlocks[i]);
+                    ShiftRow(ref initialTextBlocks[i]);
+                    MixColumn(ref initialTextBlocks[i]);
                     AddRoundKey(ref initialTextBlocks[i], keys[j]);
                 }
             }
+        }
+
+        private static void MixColumn(ref byte[] block)
+        {
+            var doubleBlock = GetDoubleBlock(block);
+
+            var mcc = AesConstants.MixColumnsCoefficients;
+            for (var i = 0; i < 4; i++)
+            {
+                for (var j = 0; j < 4; j++)
+                {
+                    doubleBlock[i][j] = (byte)((byte)(doubleBlock[0][j] * mcc[i][0]) ^ (byte)(doubleBlock[1][j] * mcc[i][1]) ^ (byte)(doubleBlock[2][j] * mcc[i][2]) ^ (byte)(doubleBlock[3][j] * mcc[i][3]));
+                }
+            }
+
+            for (var i = 0; i < 4; i++)
+            {
+                for (var j = 0; j < 4; j++)
+                {
+                    block[i * 4 + j] = doubleBlock[i][j];
+                }
+            }
+        }
+
+        private static void ShiftRow(ref byte[] block)
+        {
+            var doubleBlock = GetDoubleBlock(block);
+
+            for (var i = 0; i < 4; i++)
+            {
+                var temp = doubleBlock[i][0];
+                var temp1 = i == 0 ? temp : doubleBlock[i][(i - 1) % 4];
+                var temp2 = i == 0 ? temp : doubleBlock[i][(i + 1) % 4];
+                var temp3 = i == 0 ? temp : doubleBlock[i][(i + 2) % 4];
+                var temp4 = i == 0 ? temp : doubleBlock[i][(i - 3) % 4];
+
+                doubleBlock[i][0] = temp1;
+                doubleBlock[i][1] = temp2;
+                doubleBlock[i][2] = temp3;
+                doubleBlock[i][3] = temp4;
+            }
+        }
+
+        private static byte[][] GetDoubleBlock(byte[] block)
+        {
+            var doubleBlock = new byte[4][];
+            for (var i = 0; i < 4; i++)
+            {
+                doubleBlock[i] = new byte[4];
+                for (var j = 0; j < 4; j++)
+                {
+                    doubleBlock[i][j] = block[i * 4 + j];
+                }
+            }
+            return doubleBlock;
         }
 
         private static byte[][][] KeyExpansion(byte[] initialKey, int roundCount, int wordCount)
@@ -142,7 +199,7 @@ namespace ModernSymmetricCiphers.Helpers
 
         private static byte[] G(byte[] word, int roundCount, int wordCount)
         {
-            ShiftRow(ref word, wordCount);
+            ShiftRowKey(ref word, wordCount);
             ByteSubstitution(ref word);
             AddRoundConstant(ref word, roundCount);
             return word;
@@ -173,7 +230,7 @@ namespace ModernSymmetricCiphers.Helpers
             }
         }
 
-        private static void ShiftRow(ref byte[] word, int wordCount)
+        private static void ShiftRowKey(ref byte[] word, int wordCount)
         {
             var temp = word[0];
             for (var i = 0; i < wordCount - 1; i++)
