@@ -83,7 +83,7 @@ namespace ModernSymmetricCiphers.Helpers
             for(var i = 0; i < initialTextBlocks.Length; i++)
             {
                 AddRoundKey(ref initialTextBlocks[i], keys[0]); // "Нулевой" раунд.
-                for (var j = 0; j < nr; j++)
+                for (var j = 0; j < nr; j++) // Основные раунды.
                 {
                     ByteSubstitution(ref initialTextBlocks[i]);
                     ShiftRow(ref initialTextBlocks[i]);
@@ -91,6 +91,17 @@ namespace ModernSymmetricCiphers.Helpers
                     AddRoundKey(ref initialTextBlocks[i], keys[j]);
                 }
             }
+
+            var result = new List<byte>();
+            for (var i = 0; i < initialTextBlocks.Length; i++)
+            {
+                for (var j = 0; j < intBlockType; j++)
+                {
+                    result.Add(initialTextBlocks[i][j]);
+                }
+            }
+
+            encoder.FinishedText = Encoding.UTF8.GetString(result.ToArray(), 0, result.Count);
         }
 
         private static void MixColumn(ref byte[] block)
@@ -106,6 +117,11 @@ namespace ModernSymmetricCiphers.Helpers
                 }
             }
 
+            block = ReturnToOneDimensionalBlock(block, doubleBlock);
+        }
+
+        private static byte[] ReturnToOneDimensionalBlock(byte[] block, byte[][] doubleBlock)
+        {
             for (var i = 0; i < 4; i++)
             {
                 for (var j = 0; j < 4; j++)
@@ -113,6 +129,8 @@ namespace ModernSymmetricCiphers.Helpers
                     block[i * 4 + j] = doubleBlock[i][j];
                 }
             }
+
+            return block;
         }
 
         private static void ShiftRow(ref byte[] block)
@@ -122,16 +140,18 @@ namespace ModernSymmetricCiphers.Helpers
             for (var i = 0; i < 4; i++)
             {
                 var temp = doubleBlock[i][0];
-                var temp1 = i == 0 ? temp : doubleBlock[i][(i - 1) % 4];
-                var temp2 = i == 0 ? temp : doubleBlock[i][(i + 1) % 4];
-                var temp3 = i == 0 ? temp : doubleBlock[i][(i + 2) % 4];
-                var temp4 = i == 0 ? temp : doubleBlock[i][(i - 3) % 4];
+                var temp1 = i == 0 ? temp : doubleBlock[i][i % 4];
+                var temp2 = i == 3 ? temp : doubleBlock[i][(i + 1) % 4];
+                var temp3 = i == 2 ? temp : doubleBlock[i][(i + 2) % 4];
+                var temp4 = i == 1 ? temp : doubleBlock[i][(i + 3) % 4];
 
                 doubleBlock[i][0] = temp1;
                 doubleBlock[i][1] = temp2;
                 doubleBlock[i][2] = temp3;
                 doubleBlock[i][3] = temp4;
             }
+
+            block = ReturnToOneDimensionalBlock(block, doubleBlock);
         }
 
         private static byte[][] GetDoubleBlock(byte[] block)
