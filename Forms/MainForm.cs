@@ -30,7 +30,14 @@ namespace ModernSymmetricCiphers.Forms
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 var fileName = openFileDialog.FileName;
-                Encoder.InitialText = File.ReadAllText(fileName);
+                using (FileStream fstream = new FileStream(openFileDialog.FileName, FileMode.Open))
+                {
+                    // выделяем массив для считывания данных из файла
+                    byte[] buffer = new byte[fstream.Length];
+                    // считываем данные
+                    fstream.Read(buffer, 0, buffer.Length);
+                    Encoder.InitialBytes = buffer;
+                }
                 pathTextBox.Text = fileName;
                 EnableButtons();
             }
@@ -74,7 +81,12 @@ namespace ModernSymmetricCiphers.Forms
                     saveFileDialog.Filter = "txt files (*.txt)|*.txt|All files (*.*)|*.*";
                     if (saveFileDialog.ShowDialog() == DialogResult.OK)
                     {
-                        File.WriteAllText(saveFileDialog.FileName, Encoder.FinishedText);
+                        using (FileStream fstream = new FileStream(saveFileDialog.FileName, FileMode.OpenOrCreate))
+                        {
+                            var buffer = Encoder.FinishedBytes;
+                            // запись массива байтов в файл
+                            fstream.Write(buffer, 0, buffer.Length);
+                        }
                     }
                 }
             }

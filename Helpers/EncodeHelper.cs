@@ -18,7 +18,7 @@ namespace ModernSymmetricCiphers.Helpers
         /// <param name="encoder">Шифратор со всей информацией.</param>
         public static void Encode(this AesEncoder encoder)
         {
-            if (string.IsNullOrWhiteSpace(encoder.InitialText) || string.IsNullOrWhiteSpace(encoder.SecretKey))
+            if (encoder.InitialBytes == null || string.IsNullOrWhiteSpace(encoder.SecretKey))
             {
                 throw new EncodeException("Исходный текст и секретный ключ не должны быть пустыми.");
             }
@@ -26,8 +26,7 @@ namespace ModernSymmetricCiphers.Helpers
             var intBlockType = (int)encoder.BlockType;
 
             // Заполняем блоки.
-            var initialText = encoder.InitialText;
-            var initialTextBytes = Encoding.UTF8.GetBytes(initialText);
+            var initialTextBytes = encoder.InitialBytes;
             var initialTextBlocksCount = initialTextBytes.Length % intBlockType != 0
                 ? initialTextBytes.Length / intBlockType + 1
                 : initialTextBytes.Length / intBlockType;
@@ -101,7 +100,7 @@ namespace ModernSymmetricCiphers.Helpers
                 }
             }
 
-            encoder.FinishedText = Encoding.UTF8.GetString(result.ToArray(), 0, result.Count);
+            encoder.FinishedBytes = result.ToArray();
         }
 
         private static void MixColumn(ref byte[] block)

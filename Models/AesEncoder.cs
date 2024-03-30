@@ -7,23 +7,23 @@ namespace ModernSymmetricCiphers.Models
     /// </summary>
     public class AesEncoder
     {
-        private string initialText;
+        private byte[] initialBytes;
         private string secretKey;
-        private string finishedText;
+        private byte[] finishedBytes;
         private BlockEnum blockType;
 
         /// <summary>
         /// Исходный текст.
         /// </summary>
-        public string InitialText
+        public byte[] InitialBytes
         {
             get
             {
-                return initialText;
+                return initialBytes;
             }
             set
             {
-                initialText = value;
+                initialBytes = value;
             }
         }
 
@@ -45,15 +45,15 @@ namespace ModernSymmetricCiphers.Models
         /// <summary>
         /// Результат шифрования.
         /// </summary>
-        public string FinishedText
+        public byte[] FinishedBytes
         {
             get
             {
-                return finishedText;
+                return finishedBytes;
             }
             set
             {
-                finishedText = value;
+                finishedBytes = value;
             }
         }
 
