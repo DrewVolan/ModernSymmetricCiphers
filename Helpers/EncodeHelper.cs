@@ -82,13 +82,16 @@ namespace ModernSymmetricCiphers.Helpers
             for(var i = 0; i < initialTextBlocks.Length; i++)
             {
                 AddRoundKey(ref initialTextBlocks[i], keys[0]); // "Нулевой" раунд.
-                for (var j = 0; j < nr; j++) // Основные раунды.
+                for (var j = 0; j < nr - 1; j++) // Основные раунды.
                 {
                     ByteSubstitution(ref initialTextBlocks[i]);
                     ShiftRow(ref initialTextBlocks[i]);
                     MixColumn(ref initialTextBlocks[i]);
-                    AddRoundKey(ref initialTextBlocks[i], keys[j]);
+                    AddRoundKey(ref initialTextBlocks[i], keys[j + 1]);
                 }
+                ByteSubstitution(ref initialTextBlocks[i]); // Последний раунд.
+                ShiftRow(ref initialTextBlocks[i]);
+                AddRoundKey(ref initialTextBlocks[i], keys[keys.Length - 1]);
             }
 
             var result = new List<byte>();
@@ -265,7 +268,146 @@ namespace ModernSymmetricCiphers.Helpers
         /// <param name="encoder">Шифратор со всей информацией.</param>
         public static void Decode(this AesEncoder encoder)
         {
+            if (encoder.InitialBytes == null || string.IsNullOrWhiteSpace(encoder.SecretKey))
+            {
+                throw new EncodeException("Исходный текст и секретный ключ не должны быть пустыми.");
+            }
 
+            var intBlockType = (int)encoder.BlockType;
+
+            // Заполняем блоки.
+            var initialTextBytes = encoder.InitialBytes;
+            var initialTextBlocksCount = initialTextBytes.Length % intBlockType != 0
+                ? initialTextBytes.Length / intBlockType + 1
+                : initialTextBytes.Length / intBlockType;
+            var initialTextBlocks = new byte[initialTextBlocksCount][];
+            for (var i = 0; i < initialTextBlocks.Length; i++)
+            {
+                initialTextBlocks[i] = initialTextBytes.Skip(i * intBlockType).Take(intBlockType).ToArray();
+            }
+            // Дополняем последний блок до нужного количества бит.
+            var oldLastInitialTextBlockLength = initialTextBlocks.Last().Length;
+            if (oldLastInitialTextBlockLength != intBlockType)
+            {
+                var newLastBlock = new byte[intBlockType];
+
+                for (var i = 0; i < intBlockType; i++)
+                {
+                    newLastBlock[i] = i < oldLastInitialTextBlockLength
+                        ? initialTextBlocks[initialTextBlocks.Length - 1][i]
+                        : Convert.ToByte(0x00);
+                }
+                initialTextBlocks[initialTextBlocks.Length - 1] = newLastBlock;
+            }
+
+            var secretKey = encoder.SecretKey;
+            var secretKeyBytes = Encoding.UTF8.GetBytes(secretKey);
+            if (secretKeyBytes.Length > intBlockType)
+            {
+                throw new EncodeException($"Необходим ключ размером {intBlockType} байт или меньше.");
+            }
+            // Дополняем блок до нужного количества бит.
+            var secretKeyBlockLength = secretKeyBytes.Length;
+            if (secretKeyBlockLength != intBlockType)
+            {
+                var newBlock = new byte[intBlockType];
+
+                for (var i = 0; i < intBlockType; i++)
+                {
+                    newBlock[i] = i < secretKeyBlockLength
+                        ? secretKeyBytes[i]
+                        : Convert.ToByte(0x00);
+                }
+                secretKeyBytes = newBlock;
+            }
+
+            // Определяем параметры.
+            var nk = encoder.Nk; // Количество слов в ключе.
+            var nr = encoder.Nr; // Количество раундов в алгоритме.
+
+            // Получаем ключи для всех раундов.
+            var keys = KeyExpansion(secretKeyBytes, nr + 1, nk);
+
+            // Начинаем шифрование текста.
+            for (var i = 0; i < initialTextBlocks.Length; i++)
+            {
+                AddRoundKey(ref initialTextBlocks[i], keys[keys.Length - 1]); // "Нулевой" раунд.
+                for (var j = 0; j < nr - 1; j++) // Основные раунды.
+                {
+                    InvShiftRow(ref initialTextBlocks[i]);
+                    InvByteSubstitution(ref initialTextBlocks[i]);
+                    AddRoundKey(ref initialTextBlocks[i], keys[keys.Length - 2 - j]);
+                    InvMixColumn(ref initialTextBlocks[i]);
+                }
+                InvShiftRow(ref initialTextBlocks[i]);
+                InvByteSubstitution(ref initialTextBlocks[i]);
+                AddRoundKey(ref initialTextBlocks[i], keys[0]);
+            }
+
+            var result = new List<byte>();
+            for (var i = 0; i < initialTextBlocks.Length; i++)
+            {
+                for (var j = 0; j < intBlockType; j++)
+                {
+                    result.Add(initialTextBlocks[i][j]);
+                }
+            }
+
+            encoder.FinishedBytes = result.ToArray();
+        }
+
+        private static void InvMixColumn(ref byte[] block)
+        {
+            var doubleBlock = GetDoubleBlock(block);
+
+            var mcc = AesConstants.InvMixColumnsCoefficients;
+            for (var i = 0; i < 4; i++)
+            {
+                for (var j = 0; j < 4; j++)
+                {
+                    doubleBlock[i][j] = (byte)((byte)(doubleBlock[0][j] * mcc[i][0]) ^ (byte)(doubleBlock[1][j] * mcc[i][1]) ^ (byte)(doubleBlock[2][j] * mcc[i][2]) ^ (byte)(doubleBlock[3][j] * mcc[i][3]));
+                }
+            }
+
+            block = ReturnToOneDimensionalBlock(block, doubleBlock);
+        }
+
+        private static void InvByteSubstitution(ref byte[] word)
+        {
+            for (var i = 0; i < word.Length; i++)
+            {
+                var hexByte = Convert.ToString(word[i], 16);
+                var isBigByte = hexByte.Length == 2;
+                var row = isBigByte
+                    ? Convert.ToInt32(hexByte[0].ToString(), 16)
+                    : 0;
+                var column = isBigByte
+                    ? Convert.ToInt32(hexByte[1].ToString(), 16)
+                    : Convert.ToInt32(hexByte[0].ToString(), 16);
+
+                word[i] = AesConstants.InverseSbox[row][column];
+            }
+        }
+
+        private static void InvShiftRow(ref byte[] block)
+        {
+            var doubleBlock = GetDoubleBlock(block);
+
+            for (var i = 0; i < 4; i++)
+            {
+                var temp = doubleBlock[i][0];
+                var temp1 = i == 0 ? temp : doubleBlock[i][Math.Abs((i - 4) % 4)];
+                var temp2 = i == 1 ? temp : doubleBlock[i][Math.Abs((i - 3) % 4)];
+                var temp3 = i == 2 ? temp : doubleBlock[i][Math.Abs((i - 2) % 4)];
+                var temp4 = i == 3 ? temp : doubleBlock[i][Math.Abs((i - 1) % 4)];
+
+                doubleBlock[i][0] = temp1;
+                doubleBlock[i][1] = temp2;
+                doubleBlock[i][2] = temp3;
+                doubleBlock[i][3] = temp4;
+            }
+
+            block = ReturnToOneDimensionalBlock(block, doubleBlock);
         }
 
         private static void AddRoundKey(ref byte[] block, byte[][] roundKey)
