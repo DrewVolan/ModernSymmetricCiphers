@@ -108,18 +108,19 @@ namespace ModernSymmetricCiphers.Helpers
 
         private static void MixColumn(ref byte[] block)
         {
-            var doubleBlock = GetDoubleBlock(block);
+            var origDb = GetDoubleBlock(block);
 
-            var mcc = AesConstants.MixColumnsCoefficients;
-            for (var i = 0; i < 4; i++)
+            var newBlock = new byte[4, 4];
+
+            for (int c = 0; c < 4; c++)
             {
-                for (var j = 0; j < 4; j++)
-                {
-                    doubleBlock[i][j] = (byte)((byte)(doubleBlock[0][j] * mcc[i][0]) ^ (byte)(doubleBlock[1][j] * mcc[i][1]) ^ (byte)(doubleBlock[2][j] * mcc[i][2]) ^ (byte)(doubleBlock[3][j] * mcc[i][3]));
-                }
+                newBlock[0, c] = (byte)(GMul(0x02, origDb[0][c]) ^ GMul(0x03, origDb[1][c]) ^ origDb[2][c] ^ origDb[3][c]);
+                newBlock[1, c] = (byte)(origDb[0][c] ^ GMul(0x02, origDb[1][c]) ^ GMul(0x03, origDb[2][c]) ^ origDb[3][c]);
+                newBlock[2, c] = (byte)(origDb[0][c] ^ origDb[1][c] ^ GMul(0x02, origDb[2][c]) ^ GMul(0x03, origDb[3][c]));
+                newBlock[3, c] = (byte)(GMul(0x03, origDb[0][c]) ^ origDb[1][c] ^ origDb[2][c] ^ GMul(0x02, origDb[3][c]));
             }
 
-            block = ReturnToOneDimensionalBlock(block, doubleBlock);
+            block = ReturnToOneDimensionalBlock(block, newBlock);
         }
 
         private static byte[] ReturnToOneDimensionalBlock(byte[] block, byte[][] doubleBlock)
@@ -129,6 +130,19 @@ namespace ModernSymmetricCiphers.Helpers
                 for (var j = 0; j < 4; j++)
                 {
                     block[i * 4 + j] = doubleBlock[i][j];
+                }
+            }
+
+            return block;
+        }
+
+        private static byte[] ReturnToOneDimensionalBlock(byte[] block, byte[, ] doubleBlock)
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                for (var j = 0; j < 4; j++)
+                {
+                    block[i * 4 + j] = doubleBlock[i, j];
                 }
             }
 
@@ -196,9 +210,9 @@ namespace ModernSymmetricCiphers.Helpers
 
                 counterForKey++;
 
-                if (counterForKey == wordCount - 1)
+                if (counterForKey == wordCount)
                 {
-                    keys.Add(words.Skip(i - wordCount).Take(wordCount).ToArray());
+                    keys.Add(words.Skip(i - wordCount + 1).Take(wordCount).ToArray());
                     counterForKey = 0;
                 }
             }
@@ -358,18 +372,42 @@ namespace ModernSymmetricCiphers.Helpers
 
         private static void InvMixColumn(ref byte[] block)
         {
-            var doubleBlock = GetDoubleBlock(block);
+            var origDb = GetDoubleBlock(block);
 
-            var mcc = AesConstants.InvMixColumnsCoefficients;
-            for (var i = 0; i < 4; i++)
+            var newBlock = new byte[4, 4];
+
+            for (int c = 0; c < 4; c++)
             {
-                for (var j = 0; j < 4; j++)
-                {
-                    doubleBlock[i][j] = (byte)((byte)(doubleBlock[0][j] * mcc[i][0]) ^ (byte)(doubleBlock[1][j] * mcc[i][1]) ^ (byte)(doubleBlock[2][j] * mcc[i][2]) ^ (byte)(doubleBlock[3][j] * mcc[i][3]));
-                }
+                newBlock[0, c] = (byte)(GMul(origDb[0][c], 0x0e) ^ GMul(origDb[1][c], 0x0b) ^ GMul(origDb[2][c], 0x0d) ^ GMul(origDb[3][c], 0x09));
+                newBlock[1, c] = (byte)(GMul(origDb[0][c], 0x09) ^ GMul(origDb[1][c], 0x0e) ^ GMul(origDb[2][c], 0x0b) ^ GMul(origDb[3][c], 0x0d));
+                newBlock[2, c] = (byte)(GMul(origDb[0][c], 0x0d) ^ GMul(origDb[1][c], 0x09) ^ GMul(origDb[2][c], 0x0e) ^ GMul(origDb[3][c], 0x0b));
+                newBlock[3, c] = (byte)(GMul(origDb[0][c], 0x0b) ^ GMul(origDb[1][c], 0x0d) ^ GMul(origDb[2][c], 0x09) ^ GMul(origDb[3][c], 0x0e));
             }
 
-            block = ReturnToOneDimensionalBlock(block, doubleBlock);
+            block = ReturnToOneDimensionalBlock(block, newBlock);
+        }
+
+        private static byte GMul(byte a, byte b)
+        { // Galois Field (256) Multiplication of two Bytes
+            byte p = 0;
+
+            for (int counter = 0; counter < 8; counter++)
+            {
+                if ((b & 1) != 0)
+                {
+                    p ^= a;
+                }
+
+                bool hi_bit_set = (a & 0x80) != 0;
+                a <<= 1;
+                if (hi_bit_set)
+                {
+                    a ^= 0x1B; /* x^8 + x^4 + x^3 + x + 1 */
+                }
+                b >>= 1;
+            }
+
+            return p;
         }
 
         private static void InvByteSubstitution(ref byte[] word)
@@ -395,11 +433,11 @@ namespace ModernSymmetricCiphers.Helpers
 
             for (var i = 0; i < 4; i++)
             {
-                var temp = doubleBlock[i][0];
-                var temp1 = i == 0 ? temp : doubleBlock[i][Math.Abs((i - 4) % 4)];
-                var temp2 = i == 1 ? temp : doubleBlock[i][Math.Abs((i - 3) % 4)];
-                var temp3 = i == 2 ? temp : doubleBlock[i][Math.Abs((i - 2) % 4)];
-                var temp4 = i == 3 ? temp : doubleBlock[i][Math.Abs((i - 1) % 4)];
+                var isEven = i % 2 == 0;
+                var temp1 = isEven ? doubleBlock[i][Math.Abs(i % 4)] : doubleBlock[i][Math.Abs((i + 2) % 4)];
+                var temp2 = isEven ? doubleBlock[i][Math.Abs((i + 1) % 4)] : doubleBlock[i][Math.Abs((i + 3) % 4)];
+                var temp3 = isEven ? doubleBlock[i][Math.Abs((i + 2) % 4)] : doubleBlock[i][Math.Abs(i % 4)];
+                var temp4 = isEven ? doubleBlock[i][Math.Abs((i + 3) % 4)] : doubleBlock[i][Math.Abs((i + 1) % 4)];
 
                 doubleBlock[i][0] = temp1;
                 doubleBlock[i][1] = temp2;
