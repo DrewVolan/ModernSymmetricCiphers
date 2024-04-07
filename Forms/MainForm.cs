@@ -76,17 +76,11 @@ namespace ModernSymmetricCiphers.Forms
 
                 using (var saveFileDialog = new SaveFileDialog())
                 {
-                    saveFileDialog.DefaultExt = ".txt";
                     saveFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                    saveFileDialog.Filter = "txt files (*.txt)|*.txt|All files (*.*)|*.*";
+                    saveFileDialog.Filter = "All files (*.*)|*.*";
                     if (saveFileDialog.ShowDialog() == DialogResult.OK)
                     {
-                        using (FileStream fstream = new FileStream(saveFileDialog.FileName, FileMode.OpenOrCreate))
-                        {
-                            var buffer = Encoder.FinishedBytes;
-                            // запись массива байтов в файл
-                            fstream.Write(buffer, 0, buffer.Length);
-                        }
+                        File.WriteAllBytes(saveFileDialog.FileName, Encoder.FinishedBytes);
                     }
                 }
             }
