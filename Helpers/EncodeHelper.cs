@@ -45,7 +45,7 @@ namespace ModernSymmetricCiphers.Helpers
                 {
                     newLastBlock[i] = i < oldLastInitialTextBlockLength
                         ? initialTextBlocks[initialTextBlocks.Length - 1][i]
-                        : Convert.ToByte(0x00);
+                        : Convert.ToByte(Convert.ToInt16(intBlockType - oldLastInitialTextBlockLength));
                 }
                 initialTextBlocks[initialTextBlocks.Length - 1] = newLastBlock;
             }
@@ -364,6 +364,16 @@ namespace ModernSymmetricCiphers.Helpers
                 for (var j = 0; j < intBlockType; j++)
                 {
                     result.Add(initialTextBlocks[i][j]);
+                }
+            }
+
+            // Очищаем последний блок от лишних байтов
+            var lastByte = result.Last();
+            if (lastByte >= 1 && lastByte <= 16)
+            {
+                if (result.Skip(result.Count - lastByte).All(x => x == lastByte))
+                {
+                    result.RemoveRange(result.Count - lastByte, lastByte);
                 }
             }
 
