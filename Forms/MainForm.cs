@@ -86,11 +86,11 @@ namespace ModernSymmetricCiphers.Forms
             }
             catch (EncodeException ex)
             {
-
+                MessageBox.Show(this, ex.Message, "Ошибка в данных", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             catch (Exception ex)
             {
-
+                MessageBox.Show(this, $"Exception message: {ex.Message}\nInner exception message: {ex.InnerException.Message}\nStack trace: {ex.StackTrace}", "Непредвиденная ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
