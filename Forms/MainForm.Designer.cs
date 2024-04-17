@@ -156,4 +156,3 @@
         private System.Windows.Forms.Button encodeButton;
     }
 }
-

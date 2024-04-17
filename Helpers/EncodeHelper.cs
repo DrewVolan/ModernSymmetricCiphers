@@ -12,6 +12,9 @@ namespace ModernSymmetricCiphers.Helpers
     /// </summary>
     public static class EncodeHelper
     {
+
+        #region Основные методы
+
         /// <summary>
         /// Шифрует исходные данные.
         /// </summary>
@@ -94,6 +97,7 @@ namespace ModernSymmetricCiphers.Helpers
                 AddRoundKey(ref initialTextBlocks[i], keys[keys.Length - 1]);
             }
 
+            // Результат приводим в одномерный массив.
             var result = new List<byte>();
             for (var i = 0; i < initialTextBlocks.Length; i++)
             {
@@ -104,176 +108,6 @@ namespace ModernSymmetricCiphers.Helpers
             }
 
             encoder.FinishedBytes = result.ToArray();
-        }
-
-        private static void MixColumn(ref byte[] block)
-        {
-            var origDb = GetDoubleBlock(block);
-
-            var newBlock = new byte[4, 4];
-
-            for (int c = 0; c < 4; c++)
-            {
-                newBlock[0, c] = (byte)(GMul(0x02, origDb[0][c]) ^ GMul(0x03, origDb[1][c]) ^ origDb[2][c] ^ origDb[3][c]);
-                newBlock[1, c] = (byte)(origDb[0][c] ^ GMul(0x02, origDb[1][c]) ^ GMul(0x03, origDb[2][c]) ^ origDb[3][c]);
-                newBlock[2, c] = (byte)(origDb[0][c] ^ origDb[1][c] ^ GMul(0x02, origDb[2][c]) ^ GMul(0x03, origDb[3][c]));
-                newBlock[3, c] = (byte)(GMul(0x03, origDb[0][c]) ^ origDb[1][c] ^ origDb[2][c] ^ GMul(0x02, origDb[3][c]));
-            }
-
-            block = ReturnToOneDimensionalBlock(block, newBlock);
-        }
-
-        private static byte[] ReturnToOneDimensionalBlock(byte[] block, byte[][] doubleBlock)
-        {
-            for (var i = 0; i < 4; i++)
-            {
-                for (var j = 0; j < 4; j++)
-                {
-                    block[i * 4 + j] = doubleBlock[i][j];
-                }
-            }
-
-            return block;
-        }
-
-        private static byte[] ReturnToOneDimensionalBlock(byte[] block, byte[, ] doubleBlock)
-        {
-            for (var i = 0; i < 4; i++)
-            {
-                for (var j = 0; j < 4; j++)
-                {
-                    block[i * 4 + j] = doubleBlock[i, j];
-                }
-            }
-
-            return block;
-        }
-
-        private static void ShiftRow(ref byte[] block)
-        {
-            var doubleBlock = GetDoubleBlock(block);
-
-            for (var i = 0; i < 4; i++)
-            {
-                var temp = doubleBlock[i][0];
-                var temp1 = i == 0 ? temp : doubleBlock[i][i % 4];
-                var temp2 = i == 3 ? temp : doubleBlock[i][(i + 1) % 4];
-                var temp3 = i == 2 ? temp : doubleBlock[i][(i + 2) % 4];
-                var temp4 = i == 1 ? temp : doubleBlock[i][(i + 3) % 4];
-
-                doubleBlock[i][0] = temp1;
-                doubleBlock[i][1] = temp2;
-                doubleBlock[i][2] = temp3;
-                doubleBlock[i][3] = temp4;
-            }
-
-            block = ReturnToOneDimensionalBlock(block, doubleBlock);
-        }
-
-        private static byte[][] GetDoubleBlock(byte[] block)
-        {
-            var doubleBlock = new byte[4][];
-            for (var i = 0; i < 4; i++)
-            {
-                doubleBlock[i] = new byte[4];
-                for (var j = 0; j < 4; j++)
-                {
-                    doubleBlock[i][j] = block[i * 4 + j];
-                }
-            }
-            return doubleBlock;
-        }
-
-        private static byte[][][] KeyExpansion(byte[] initialKey, int roundCount, int wordCount)
-        {
-            var keys = new List<byte[][]>();
-
-            var words = new byte[roundCount * wordCount + wordCount][];
-
-            for (var i = 0; i < wordCount; i++)
-            {
-                words[i] = initialKey.Skip(wordCount * i).Take(wordCount).ToArray();
-            }
-
-            keys.Add(words.Take(wordCount).ToArray());
-            var counterForKey = 0;
-            for (var i = wordCount; i < roundCount * 4; i++)
-            {
-                if (i % wordCount == 0)
-                {
-                    words[i] = XorKeys(words[i - wordCount], G(words[i - 1], i / wordCount, wordCount));
-                }
-                else
-                {
-                    words[i] = XorKeys(words[i - wordCount], words[i - 1]);
-                }
-
-                counterForKey++;
-
-                if (counterForKey == wordCount)
-                {
-                    keys.Add(words.Skip(i - wordCount + 1).Take(wordCount).ToArray());
-                    counterForKey = 0;
-                }
-            }
-
-            return keys.ToArray();
-        }
-
-        private static byte[] XorKeys(byte[] word1, byte[] word2)
-        {
-            var byteCount = word1.Length;
-            var result = new byte[byteCount];
-
-            for (var i = 0; i < byteCount; i++)
-            {
-                result[i] = (byte)(word1[i] ^ word2[i]);
-            }
-
-            return result;
-        }
-
-        private static byte[] G(byte[] word, int roundCount, int wordCount)
-        {
-            ShiftRowKey(ref word, wordCount);
-            ByteSubstitution(ref word);
-            AddRoundConstant(ref word, roundCount);
-            return word;
-        }
-
-        private static void AddRoundConstant(ref byte[] word, int roundCount)
-        {
-            for (var i = 0; i < word.Length; i++)
-            {
-                word[i] = (byte)(word[i] ^ AesConstants.RoundConst[roundCount][i]);
-            }
-        }
-
-        private static void ByteSubstitution(ref byte[] word)
-        {
-            for(var i = 0; i < word.Length; i++)
-            {
-                var hexByte = Convert.ToString(word[i], 16);
-                var isBigByte = hexByte.Length == 2;
-                var row = isBigByte
-                    ? Convert.ToInt32(hexByte[0].ToString(), 16)
-                    : 0;
-                var column = isBigByte
-                    ? Convert.ToInt32(hexByte[1].ToString(), 16)
-                    : Convert.ToInt32(hexByte[0].ToString(), 16);
-
-                word[i] = AesConstants.Sbox[row][column];
-            }
-        }
-
-        private static void ShiftRowKey(ref byte[] word, int wordCount)
-        {
-            var temp = word[0];
-            for (var i = 0; i < wordCount - 1; i++)
-            {
-                word[i] = word[i + 1];
-            }
-            word[wordCount - 1] = temp;
         }
 
         /// <summary>
@@ -358,6 +192,7 @@ namespace ModernSymmetricCiphers.Helpers
                 AddRoundKey(ref initialTextBlocks[i], keys[0]);
             }
 
+            // Приводим результат в одномерный массив.
             var result = new List<byte>();
             for (var i = 0; i < initialTextBlocks.Length; i++)
             {
@@ -380,6 +215,240 @@ namespace ModernSymmetricCiphers.Helpers
             encoder.FinishedBytes = result.ToArray();
         }
 
+        #endregion
+
+        #region Общие методы
+
+        /// <summary>
+        /// Приводит двумерный массив в одномерный.
+        /// </summary>
+        private static byte[] ReturnToOneDimensionalBlock(byte[] block, byte[][] doubleBlock)
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                for (var j = 0; j < 4; j++)
+                {
+                    block[i * 4 + j] = doubleBlock[i][j];
+                }
+            }
+
+            return block;
+        }
+
+        /// <summary>
+        /// Приводит двумерный массив в одномерный.
+        /// </summary>
+        private static byte[] ReturnToOneDimensionalBlock(byte[] block, byte[,] doubleBlock)
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                for (var j = 0; j < 4; j++)
+                {
+                    block[i * 4 + j] = doubleBlock[i, j];
+                }
+            }
+
+            return block;
+        }
+
+        /// <summary>
+        /// Приводит одномерный массив в двумерный.
+        /// </summary>
+        /// <param name="block">Одномерный массив.</param>
+        /// <returns>Двумерный массив.</returns>
+        private static byte[][] GetDoubleBlock(byte[] block)
+        {
+            var doubleBlock = new byte[4][];
+            for (var i = 0; i < 4; i++)
+            {
+                doubleBlock[i] = new byte[4];
+                for (var j = 0; j < 4; j++)
+                {
+                    doubleBlock[i][j] = block[i * 4 + j];
+                }
+            }
+            return doubleBlock;
+        }
+
+        private static byte[][][] KeyExpansion(byte[] initialKey, int roundCount, int wordCount)
+        {
+            var keys = new List<byte[][]>();
+
+            var words = new byte[roundCount * wordCount + wordCount][];
+
+            for (var i = 0; i < wordCount; i++)
+            {
+                words[i] = initialKey.Skip(wordCount * i).Take(wordCount).ToArray();
+            }
+
+            keys.Add(words.Take(wordCount).ToArray());
+            var counterForKey = 0;
+            for (var i = wordCount; i < roundCount * 4; i++)
+            {
+                if (i % wordCount == 0)
+                {
+                    words[i] = XorKeys(words[i - wordCount], G(words[i - 1], i / wordCount, wordCount));
+                }
+                else
+                {
+                    words[i] = XorKeys(words[i - wordCount], words[i - 1]);
+                }
+
+                counterForKey++;
+
+                if (counterForKey == wordCount)
+                {
+                    keys.Add(words.Skip(i - wordCount + 1).Take(wordCount).ToArray());
+                    counterForKey = 0;
+                }
+            }
+
+            return keys.ToArray();
+        }
+
+        private static byte[] XorKeys(byte[] word1, byte[] word2)
+        {
+            var byteCount = word1.Length;
+            var result = new byte[byteCount];
+
+            for (var i = 0; i < byteCount; i++)
+            {
+                result[i] = (byte)(word1[i] ^ word2[i]);
+            }
+
+            return result;
+        }
+
+        private static byte[] G(byte[] word, int roundCount, int wordCount)
+        {
+            ShiftRowKey(ref word, wordCount);
+            ByteSubstitution(ref word);
+            AddRoundConstant(ref word, roundCount);
+            return word;
+        }
+
+        private static void AddRoundConstant(ref byte[] word, int roundCount)
+        {
+            for (var i = 0; i < word.Length; i++)
+            {
+                word[i] = (byte)(word[i] ^ AesConstants.RoundConst[roundCount][i]);
+            }
+        }
+
+        private static void ShiftRowKey(ref byte[] word, int wordCount)
+        {
+            var temp = word[0];
+            for (var i = 0; i < wordCount - 1; i++)
+            {
+                word[i] = word[i + 1];
+            }
+            word[wordCount - 1] = temp;
+        }
+
+        private static void AddRoundKey(ref byte[] block, byte[][] roundKey)
+        {
+            var keyList = new List<byte>();
+            for (int i = 0; i < roundKey.Length; i++)
+            {
+                for (int j = 0; j < roundKey[i].Length; j++)
+                {
+                    keyList.Add(roundKey[i][j]);
+                }
+            }
+            var key = keyList.ToArray();
+
+            for (var i = 0; i < block.Length; i++)
+            {
+                block[i] = (byte)(block[i] ^ key[i]);
+            }
+        }
+
+        private static byte GMul(byte a, byte b)
+        {
+            byte p = 0;
+
+            for (int counter = 0; counter < 8; counter++)
+            {
+                if ((b & 1) != 0)
+                {
+                    p ^= a;
+                }
+
+                bool hi_bit_set = (a & 0x80) != 0;
+                a <<= 1;
+                if (hi_bit_set)
+                {
+                    a ^= 0x1B;
+                }
+                b >>= 1;
+            }
+
+            return p;
+        }
+
+        #endregion
+
+        #region Методы шифрования
+
+        private static void MixColumn(ref byte[] block)
+        {
+            var origDb = GetDoubleBlock(block);
+
+            var newBlock = new byte[4, 4];
+
+            for (int c = 0; c < 4; c++)
+            {
+                newBlock[0, c] = (byte)(GMul(0x02, origDb[0][c]) ^ GMul(0x03, origDb[1][c]) ^ origDb[2][c] ^ origDb[3][c]);
+                newBlock[1, c] = (byte)(origDb[0][c] ^ GMul(0x02, origDb[1][c]) ^ GMul(0x03, origDb[2][c]) ^ origDb[3][c]);
+                newBlock[2, c] = (byte)(origDb[0][c] ^ origDb[1][c] ^ GMul(0x02, origDb[2][c]) ^ GMul(0x03, origDb[3][c]));
+                newBlock[3, c] = (byte)(GMul(0x03, origDb[0][c]) ^ origDb[1][c] ^ origDb[2][c] ^ GMul(0x02, origDb[3][c]));
+            }
+
+            block = ReturnToOneDimensionalBlock(block, newBlock);
+        }
+
+        private static void ShiftRow(ref byte[] block)
+        {
+            var doubleBlock = GetDoubleBlock(block);
+
+            for (var i = 0; i < 4; i++)
+            {
+                var temp = doubleBlock[i][0];
+                var temp1 = i == 0 ? temp : doubleBlock[i][i % 4];
+                var temp2 = i == 3 ? temp : doubleBlock[i][(i + 1) % 4];
+                var temp3 = i == 2 ? temp : doubleBlock[i][(i + 2) % 4];
+                var temp4 = i == 1 ? temp : doubleBlock[i][(i + 3) % 4];
+
+                doubleBlock[i][0] = temp1;
+                doubleBlock[i][1] = temp2;
+                doubleBlock[i][2] = temp3;
+                doubleBlock[i][3] = temp4;
+            }
+
+            block = ReturnToOneDimensionalBlock(block, doubleBlock);
+        }
+
+        private static void ByteSubstitution(ref byte[] word)
+        {
+            for(var i = 0; i < word.Length; i++)
+            {
+                var hexByte = Convert.ToString(word[i], 16);
+                var isBigByte = hexByte.Length == 2;
+                var row = isBigByte
+                    ? Convert.ToInt32(hexByte[0].ToString(), 16)
+                    : 0;
+                var column = isBigByte
+                    ? Convert.ToInt32(hexByte[1].ToString(), 16)
+                    : Convert.ToInt32(hexByte[0].ToString(), 16);
+
+                word[i] = AesConstants.Sbox[row][column];
+            }
+        }
+
+        #endregion
+
+        #region Методы-инверсии
+
         private static void InvMixColumn(ref byte[] block)
         {
             var origDb = GetDoubleBlock(block);
@@ -395,29 +464,6 @@ namespace ModernSymmetricCiphers.Helpers
             }
 
             block = ReturnToOneDimensionalBlock(block, newBlock);
-        }
-
-        private static byte GMul(byte a, byte b)
-        { // Galois Field (256) Multiplication of two Bytes
-            byte p = 0;
-
-            for (int counter = 0; counter < 8; counter++)
-            {
-                if ((b & 1) != 0)
-                {
-                    p ^= a;
-                }
-
-                bool hi_bit_set = (a & 0x80) != 0;
-                a <<= 1;
-                if (hi_bit_set)
-                {
-                    a ^= 0x1B; /* x^8 + x^4 + x^3 + x + 1 */
-                }
-                b >>= 1;
-            }
-
-            return p;
         }
 
         private static void InvByteSubstitution(ref byte[] word)
@@ -458,22 +504,7 @@ namespace ModernSymmetricCiphers.Helpers
             block = ReturnToOneDimensionalBlock(block, doubleBlock);
         }
 
-        private static void AddRoundKey(ref byte[] block, byte[][] roundKey)
-        {
-            var keyList = new List<byte>();
-            for (int i = 0; i < roundKey.Length; i++)
-            {
-                for (int j = 0; j < roundKey[i].Length; j++)
-                {
-                    keyList.Add(roundKey[i][j]);
-                }
-            }
-            var key = keyList.ToArray();
+        #endregion
 
-            for (var i = 0; i < block.Length; i++)
-            {
-                block[i] = (byte)(block[i] ^ key[i]);
-            }
-        }
     }
 }

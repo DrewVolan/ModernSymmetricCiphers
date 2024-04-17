@@ -3,6 +3,9 @@ using System.Runtime.Serialization;
 
 namespace ModernSymmetricCiphers.Exceptions
 {
+    /// <summary>
+    /// Ошибка шифрования.
+    /// </summary>
     [Serializable]
     public class EncodeException : Exception
     {

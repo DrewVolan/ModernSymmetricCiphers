@@ -57,6 +57,9 @@ namespace ModernSymmetricCiphers.Models
             }
         }
 
+        /// <summary>
+        /// Режим работы блочного шифра.
+        /// </summary>
         public BlockEnum BlockType
         {
             get

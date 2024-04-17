@@ -1,7 +1,13 @@
 ﻿namespace ModernSymmetricCiphers.Helpers
 {
+    /// <summary>
+    /// Класс-сборник констант.
+    /// </summary>
     internal static class AesConstants
     {
+        /// <summary>
+        /// Константа для метода SubBytes.
+        /// </summary>
         internal static byte[][] Sbox = new byte[16][] {
             new byte[16] { 99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118 },
             new byte[16] { 202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192 },
@@ -20,6 +26,9 @@
             new byte[16] { 225, 248, 152, 17, 105, 217, 142, 148, 155, 30, 135, 233, 206, 85, 40, 223 },
             new byte[16] { 140, 161, 137, 13, 191, 230, 66, 104, 65, 153, 45, 15, 176, 84, 187, 22 } };
 
+        /// <summary>
+        /// Константа для инверсии метода SubBytes.
+        /// </summary>
         internal static byte[][] InverseSbox = new byte[16][] {
             new byte[16] { 82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251 },
             new byte[16] { 124, 227, 57, 130, 155, 47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203 },
@@ -38,18 +47,27 @@
             new byte[16] { 160, 224, 59, 77, 174, 42, 245, 176, 200, 235, 187, 60, 131, 83, 153, 97 },
             new byte[16] { 23, 43, 4, 126, 186, 119, 214, 38, 225, 105, 20, 99, 85, 33, 12, 125 } };
 
+        /// <summary>
+        /// Константа для метода MixColumn.
+        /// </summary>
         internal static byte[][] MixColumnsCoefficients = new byte[4][] {
             new byte[4] { 0x02, 0x03, 0x01, 0x01 },
             new byte[4] { 0x01, 0x02, 0x03, 0x01 },
             new byte[4] { 0x01, 0x01, 0x02, 0x03 },
             new byte[4] { 0x03, 0x01, 0x01, 0x02 } };
 
+        /// <summary>
+        /// Константа для инверсии метода MixColumn.
+        /// </summary>
         internal static byte[][] InvMixColumnsCoefficients = new byte[4][] {
             new byte[4]{ 0x0e, 0x0b, 0x0d, 0x09 },
             new byte[4]{ 0x09, 0x0e, 0x0b, 0x0d },
             new byte[4]{ 0x0d, 0x09, 0x0e, 0x0b },
             new byte[4]{ 0x0b, 0x0d, 0x09, 0x0e } };
 
+        /// <summary>
+        /// Константа для метода AddRoundConstant.
+        /// </summary>
         internal static byte[][] RoundConst = new byte[16][] {
             new byte[8] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
             new byte[8] { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },

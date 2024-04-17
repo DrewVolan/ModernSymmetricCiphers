@@ -26,20 +26,27 @@ namespace ModernSymmetricCiphers.Forms
 
         private void pathButton_Click(object sender, System.EventArgs e)
         {
-            var openFileDialog = new OpenFileDialog();
-            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            try
             {
-                var fileName = openFileDialog.FileName;
-                using (FileStream fstream = new FileStream(openFileDialog.FileName, FileMode.Open))
+                var openFileDialog = new OpenFileDialog();
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    // выделяем массив для считывания данных из файла
-                    byte[] buffer = new byte[fstream.Length];
-                    // считываем данные
-                    fstream.Read(buffer, 0, buffer.Length);
-                    Encoder.InitialBytes = buffer;
+                    var fileName = openFileDialog.FileName;
+                    using (FileStream fstream = new FileStream(openFileDialog.FileName, FileMode.Open)) // Здесь происходит чтение из файла.
+                    {
+                        // Выделяем массив для считывания данных из файла
+                        byte[] buffer = new byte[fstream.Length];
+                        // Считываем данные
+                        fstream.Read(buffer, 0, buffer.Length);
+                        Encoder.InitialBytes = buffer;
+                    }
+                    pathTextBox.Text = fileName;
+                    EnableButtons();
                 }
-                pathTextBox.Text = fileName;
-                EnableButtons();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Exception message: {ex.Message}\nInner exception message: {ex.InnerException.Message}\nStack trace: {ex.StackTrace}", "Непредвиденная ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -59,12 +66,19 @@ namespace ModernSymmetricCiphers.Forms
             EnableButtons();
         }
 
+        /// <summary>
+        /// Включение/отключение кнопок.
+        /// </summary>
         private void EnableButtons()
         {
             encodeButton.Enabled = !string.IsNullOrEmpty(pathTextBox.Text) && !string.IsNullOrWhiteSpace(secretKeyTextBox.Text);
             decodeButton.Enabled = !string.IsNullOrEmpty(pathTextBox.Text) && !string.IsNullOrWhiteSpace(secretKeyTextBox.Text);
         }
 
+        /// <summary>
+        /// Сохранение файла-результат.
+        /// </summary>
+        /// <param name="encode">True - зашифровка.</param>
         private void CreateResultTxtFile(bool encode)
         {
             try
@@ -73,7 +87,7 @@ namespace ModernSymmetricCiphers.Forms
                     Encoder.Encode();
                 else
                     Encoder.Decode();
-
+                // Сохраняем файл-результат.
                 using (var saveFileDialog = new SaveFileDialog())
                 {
                     saveFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
